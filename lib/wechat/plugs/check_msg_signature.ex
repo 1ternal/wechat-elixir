@@ -1,66 +1,79 @@
-defmodule Wechat.Plugs.CheckMsgSignature do
-  @moduledoc """
-  Plug to parse xml message.
-  """
+if Code.ensure_loaded?(Plug) do
+  defmodule Wechat.Plugs.CheckMsgSignature do
+    @moduledoc """
+    Plug to parse xml message.
+    """
 
-  import Plug.Conn
-  import Wechat.Utils.MsgParser
-  import Wechat.Utils.Signature
-  import Wechat.Utils.Cipher
+    import Plug.Conn
 
-  def init(opts) do
-    Keyword.merge opts,
-      appid: Wechat.appid,
-      token: Wechat.token,
-      aes_key: aes_key(Wechat.encoding_aes_key)
-  end
+    alias Wechat.Utils.MsgParser
+    alias Wechat.Utils.Signature
+    alias Wechat.Utils.Cipher
 
-  defp aes_key(nil) do
-    nil
-  end
-  defp aes_key(encoding_aes_key) do
-    encoding_aes_key <> "=" |> Base.decode64!
-  end
-
-  def call(conn, opts) do
-    {:ok, xml, conn} = read_body(conn)
-    msg = xml |> parse
-    case msg_encrypted?(conn.params) do
-      true -> decrypt_msg(conn, msg, opts)
-      false -> conn |> assign(:msg, msg)
+    def init(_opts) do
+      [
+        appid: Wechat.appid,
+        token: Wechat.token,
+        encoding_aes_key: Wechat.encoding_aes_key
+      ]
     end
-  end
 
-  defp decrypt_msg(conn, %{encrypt: msg_encrypt}, opts) do
-    appid = Keyword.fetch!(opts, :appid)
-    token = Keyword.fetch!(opts, :token)
-    aes_key = Keyword.fetch!(opts, :aes_key)
-    case msg_valid?(msg_encrypt, conn.params, token) do
-      true ->
-        case decrypt(msg_encrypt, aes_key) do
-          {^appid, msg_decrypt} ->
-            conn
-            |> assign(:msg, msg_decrypt |> parse)
-          _ ->
-            conn
-            |> send_resp(400, "decrypt msg failed")
-            |> halt
-        end
-      false ->
-        conn
-        |> send_resp(400, "invalid msg")
-        |> halt
+    def call(%Plug.Conn{method: "GET"} = conn, _opt) do
+      conn
     end
-  end
+    def call(%Plug.Conn{params: params} = conn, opts) do
+      conn
+      |> parse_xml_body
+      |> get_message(params, opts)
+      |> handle_conn(conn)
+    end
 
-  defp msg_encrypted?(params) do
-    encrypt_type = Map.get(params, "encrypt_type")
-    encrypt_type in [nil, "raw"] == false
-  end
+    defp parse_xml_body(%Plug.Conn{} = conn) do
+      conn
+      |> read_body
+      |> elem(1)
+      |> MsgParser.parse
+    end
 
-  defp msg_valid?(msg_encrypt, params, token) do
-    %{"timestamp" => timestamp, "nonce" => nonce, "msg_signature" => signature} = params
-    my_signature = [token, timestamp, nonce, msg_encrypt] |> sign
-    my_signature == signature
+    defp get_message(%{"Encrypt" => _} = message, %{"msg_signature" => _} = params, opts) do
+      get_encrypt_mod_message(message, params, opts)
+    end
+    defp get_message(message, %{"msg_signature" => _}, _opts) do
+      {:ok, {:comp, message}}
+    end
+    defp get_message(message, _params, _opt) do
+      {:ok, {:plain, message}}
+    end
+
+    defp get_encrypt_mod_message(%{"Encrypt" => encrypted_message}, params, opts) do
+      appid            = Keyword.fetch!(opts, :appid)
+      encoding_aes_key = Keyword.fetch!(opts, :encoding_aes_key)
+      token            = Keyword.fetch!(opts, :token)
+      with true          <- (valid_message?(encrypted_message, params, token) || :message_invalid),
+           {^appid, xml} <- Cipher.decrypt(encrypted_message, encoding_aes_key),
+           message       <- MsgParser.parse(xml)
+      do
+        {:ok, {:encrypt, message}}
+      else
+        :message_invalid       -> {:error, "invalid message"}
+        _                      -> {:error, "message decrypte error"}
+      end
+    end
+
+    defp handle_conn({:ok, {message_type, message}}, conn) do
+      conn
+      |> assign(:msg, message)
+      |> assign(:msg_type, message_type)
+    end
+    defp handle_conn({:error, err_msg}, conn) do
+      conn
+      |> send_resp(400, err_msg)
+      |> halt
+    end
+
+    defp valid_message?(msg, %{"timestamp" => timestamp, "nonce" => nonce, "msg_signature" => signature}, token) do
+      Signature.valid?(signature, [token, timestamp, nonce, msg])
+    end
+    defp valid_message?(_, _, _), do: false
   end
 end

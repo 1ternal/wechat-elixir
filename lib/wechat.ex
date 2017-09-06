@@ -1,11 +1,33 @@
 defmodule Wechat do
   @moduledoc false
 
+  defmodule ConfigMissingError do
+    defexception message: """
+      The app_id and app_secret is required.
+      Please configure
+      app_id and app_secret in your config.exs
+      config :wechat, Wechat,
+        app_id: YOUR_APP_ID
+        app_secret: YOU_APP_SECRET
+    """
+  end
+
   alias Wechat.Workers.AccessToken
   alias Wechat.Workers.JSAPITicket
 
   def config do
-    Keyword.merge(default_config(), Application.get_env(:wechat, Wechat))
+    Keyword.merge(default_config(), app_config())
+  end
+
+  defp app_config do
+    with conf when is_list(conf) <- Application.get_env(:wechat, Wechat),
+         true                    <- Keyword.has_key?(conf, :appid),
+         true                    <- Keyword.has_key?(conf, :secret)
+    do
+      conf
+    else
+      _ -> raise ConfigMissingError
+    end
   end
 
   def appid do

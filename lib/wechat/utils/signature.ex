@@ -1,7 +1,11 @@
 defmodule Wechat.Utils.Signature do
   @moduledoc """
-  Generate signature.
+  Check and Generate signature.
   """
+
+  def valid?(signature, args) when is_binary(signature) and is_list(args) do
+    signature == sign(args)
+  end
 
   def sign(args) do
     args

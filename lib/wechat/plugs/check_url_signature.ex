@@ -1,27 +1,19 @@
-defmodule Wechat.Plugs.CheckUrlSignature do
-  @moduledoc """
-  Plug to check url signature.
-  """
+if Code.ensure_loaded?(Plug) do
+  defmodule Wechat.Plugs.CheckUrlSignature do
+    @moduledoc """
+    Plug to check url signature.
+    """
 
-  import Plug.Conn
-  import Wechat.Utils.Signature
+    import Plug.Conn
+    alias Wechat.Utils.Signature
 
-  def init(opts) do
-    Keyword.merge opts,
-      token: Wechat.token
-  end
-
-  def call(conn = %Plug.Conn{params: params}, [token: token]) do
-    %{"timestamp" => timestamp, "nonce" => nonce,
-      "signature" => signature} = params
-    my_signature = [token, timestamp, nonce] |> sign
-    case my_signature == signature do
-      true ->
-        conn
-      false ->
-        conn
-        |> send_resp(400, "")
-        |> halt
+    def init(_opts) do
+      [token: Wechat.token]
     end
+
+    def call(%Plug.Conn{params: %{"timestamp" => timestamp, "nonce" => nonce, "signature" => signature}} = conn, [token: token]) do
+      assign(conn, :url_checked, Signature.valid?(signature, [token, timestamp, nonce]))
+    end
+    def call(conn, _opt), do: assign(conn, :url_checked, :false)
   end
 end

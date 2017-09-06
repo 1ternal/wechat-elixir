@@ -1,0 +1,31 @@
+<xml>
+  <ToUserName><![CDATA[toUser]]></ToUserName>
+  <FromUserName><![CDATA[fromUser]]></FromUserName>
+  <CreateTime>1348831860</CreateTime>
+  <MsgType><![CDATA[text]]></MsgType>
+  <MsgId>1234567890123456</MsgId>
+
+  <Content><![CDATA[this is a test]]></Content>
+
+  <PicUrl><![CDATA[this is a url]]></PicUrl>
+  <MediaId><![CDATA[media_id]]></MediaId>
+
+  <MediaId><![CDATA[media_id]]></MediaId>
+  <Format><![CDATA[Format]]></Format>
+  <Recognition><![CDATA[腾讯微信团队]]></Recognition>
+
+  <MediaId><![CDATA[media_id]]></MediaId>
+  <ThumbMediaId><![CDATA[thumb_media_id]]></ThumbMediaId>
+
+  <MediaId><![CDATA[media_id]]></MediaId>
+  <ThumbMediaId><![CDATA[thumb_media_id]]></ThumbMediaId>
+
+  <Location_X>23.134521</Location_X>
+  <Location_Y>113.358803</Location_Y>
+  <Scale>20</Scale>
+  <Label><![CDATA[位置信息]]></Label>
+
+  <Title><![CDATA[公众平台官网链接]]></Title>
+  <Description><![CDATA[公众平台官网链接]]></Description>
+  <Url><![CDATA[url]]></Url>
+</xml>

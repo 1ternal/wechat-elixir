@@ -1,0 +1,9 @@
+<xml>
+  <URL><![CDATA[http://198.181.35.80/wx]]></URL>
+  <ToUserName><![CDATA[toUser]]></ToUserName>
+  <FromUserName><![CDATA[fromUser]]></FromUserName>
+  <CreateTime>1237819237012</CreateTime>
+  <MsgType><![CDATA[text]]></MsgType>
+  <Content><![CDATA[hellworld]]></Content>
+  <MsgId>123123890123</MsgId>
+</xml>
