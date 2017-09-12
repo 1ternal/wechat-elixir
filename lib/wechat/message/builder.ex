@@ -1,4 +1,4 @@
-defmodule Wechat.Message.Responder do
+defmodule Wechat.Message.Builder do
   @moduledoc """
   Default MessageHandler implements
   """
@@ -38,7 +38,7 @@ defmodule Wechat.Message.Responder do
 
     quote do
       unquote(Enum.reverse(reply_fun_ast))
-      def reply(msg), do: Wechat.Message.Responder.reply_fallback(msg)
+      def reply(msg), do: Wechat.Message.Builder.reply_fallback(msg)
       defoverridable [reply: 1]
     end
   end
@@ -66,14 +66,14 @@ defmodule Wechat.Message.Responder do
     escaped = Macro.escape(match_msg)
     quote do
       def reply(unquote(escaped) = msg),
-        do: Wechat.Message.Responder.reply(msg, unquote(reply_type), unquote(func))
+        do: Wechat.Message.Builder.reply(msg, unquote(reply_type), unquote(func))
     end
   end
   defp match_reply(match_msg, map_size, {reply_type, func}) do
     escaped = Macro.escape(match_msg)
     quote do
       def reply(unquote(escaped) = msg) when map_size(msg) == unquote(map_size),
-        do: Wechat.Message.Responder.reply(msg, unquote(reply_type), unquote(func))
+        do: Wechat.Message.Builder.reply(msg, unquote(reply_type), unquote(func))
     end
   end
 
@@ -118,7 +118,7 @@ defmodule Wechat.Message.Responder do
   end
 
   defp check_with_param!(type, with_guard) do
-    if with_guard && !Wechat.Message.Responder.allow_with_param?(type) do
+    if with_guard && !Wechat.Message.Builder.allow_with_param?(type) do
       type_name = type |> to_string |> String.capitalize
       raise ~s(
         #{type_name} message defination error.
@@ -126,7 +126,7 @@ defmodule Wechat.Message.Responder do
       )
     end
 
-    if !with_guard && Wechat.Message.Responder.must_have_with_params?(type) do
+    if !with_guard && Wechat.Message.Builder.must_have_with_params?(type) do
       type_name = type |> to_string |> String.capitalize
       raise ~s(
         #{type_name} message defination error.

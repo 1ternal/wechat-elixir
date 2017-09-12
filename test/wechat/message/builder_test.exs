@@ -1,10 +1,10 @@
-defmodule Wechat.Message.ResponderTest do
+defmodule Wechat.Message.BuilderTest do
   use ExUnit.Case, asyc: true
 
   describe "Module behaviour" do
     test "reply any message" do
       recv_msg = :text |> message |> Map.put("Content", "whatever")
-      reply = Wechat.Message.Responder.reply(recv_msg)
+      reply = Wechat.Message.Builder.reply(recv_msg)
 
       # reply backbone
       assert reply["FromUserName"]
@@ -24,7 +24,7 @@ defmodule Wechat.Message.ResponderTest do
 
   describe "DSL params" do
     defmodule ModDSLParam do
-      use Wechat.Message.Responder
+      use Wechat.Message.Builder
 
       from :text, fn reply ->
         Map.put(reply, "Content", "from accept two ariry")
@@ -45,7 +45,7 @@ defmodule Wechat.Message.ResponderTest do
       test "#{t} is not support `with` parameters" do
         assert_raise RuntimeError, fn ->
           defmodule unquote(mod) do
-            use Wechat.Message.Responder
+            use Wechat.Message.Builder
             from unquote(t), [with: "something"], & &1
           end
         end
@@ -57,7 +57,7 @@ defmodule Wechat.Message.ResponderTest do
       mod = "with_valid_#{t}" |> Macro.camelize |> String.to_atom
       test "#{t} is support `with` parameters" do
         defmodule unquote(mod) do
-          use Wechat.Message.Responder
+          use Wechat.Message.Builder
           from unquote(t), [with: "something"], & &1
         end
       end
@@ -68,7 +68,7 @@ defmodule Wechat.Message.ResponderTest do
       mod = "to_valid_#{t}" |> Macro.camelize |> String.to_atom
       test "#{t} was support `to` parameters" do
         defmodule unquote(mod) do
-          use Wechat.Message.Responder
+          use Wechat.Message.Builder
           from :text, [to: unquote(t)], & &1
         end
       end
@@ -80,7 +80,7 @@ defmodule Wechat.Message.ResponderTest do
       test "#{t} was support `to` parameters" do
         assert_raise RuntimeError, fn ->
           defmodule unquote(mod) do
-            use Wechat.Message.Responder
+            use Wechat.Message.Builder
             from :link, [to: unquote(t)], & &1
           end
         end
@@ -89,14 +89,14 @@ defmodule Wechat.Message.ResponderTest do
 
     test "func with one arity" do
       defmodule SingleAFuncMod do
-        use Wechat.Message.Responder
+        use Wechat.Message.Builder
         from :link, [to: :image], & &1
       end
     end
 
     test "func with two arity" do
       defmodule TwoAFuncMod do
-        use Wechat.Message.Responder
+        use Wechat.Message.Builder
         from :link, [to: :music], fn _, rep -> rep end
       end
     end
@@ -104,7 +104,7 @@ defmodule Wechat.Message.ResponderTest do
     test "func with zero arity" do
       assert_raise RuntimeError, fn ->
         defmodule ZeroAFuncMod do
-          use Wechat.Message.Responder
+          use Wechat.Message.Builder
           from :link, [to: :news], fn -> :ok end
         end
       end
@@ -113,7 +113,7 @@ defmodule Wechat.Message.ResponderTest do
     test "func with three arity" do
       assert_raise RuntimeError, fn ->
         defmodule ThreeAFuncMod do
-          use Wechat.Message.Responder
+          use Wechat.Message.Builder
           from :link, [to: :news], fn _, _, _ -> :ok end
         end
       end
@@ -122,7 +122,7 @@ defmodule Wechat.Message.ResponderTest do
 
   describe "DSL basic bahaviour" do
     defmodule ModB do
-      use Wechat.Message.Responder
+      use Wechat.Message.Builder
 
       from :text, fn msg ->
         Map.put(msg, "Content", "upper")
@@ -144,7 +144,7 @@ defmodule Wechat.Message.ResponderTest do
 
   describe "DSL receive normal type message" do
     defmodule ModRecv do
-      use Wechat.Message.Responder
+      use Wechat.Message.Builder
 
       from :image, fn reply ->
         Map.put(reply, "Content", "mod_recv image")
@@ -214,7 +214,7 @@ defmodule Wechat.Message.ResponderTest do
 
   describe "DSL receive event type message" do
     defmodule EventMessageA do
-      use Wechat.Message.Responder
+      use Wechat.Message.Builder
 
       # user subscibe event
       from :event_subscribe, fn reply ->
@@ -351,7 +351,7 @@ defmodule Wechat.Message.ResponderTest do
     end
 
     defmodule ModA do
-      use Wechat.Message.Responder
+      use Wechat.Message.Builder
 
       from :text, [with: "hello"], fn msg ->
         Map.put(msg, "Content", "hello world")
@@ -426,7 +426,7 @@ defmodule Wechat.Message.ResponderTest do
         mod_name = "#{recv_t}_#{rep_t}_mod" |> Macro.camelize |> String.to_atom
         test "from #{recv_t} to #{rep_t}" do
           defmodule unquote(mod_name) do
-            use Wechat.Message.Responder
+            use Wechat.Message.Builder
             from unquote(recv_t), [to: unquote(rep_t)], & &1
           end
 

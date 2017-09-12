@@ -136,76 +136,136 @@ defmodule Wechat.Message do
   end
 
   defmodule Reply do
-    def types, do: ~W(text image voice video music news)a
     @moduledoc """
     Reply message
 
     Message Types ref: https://mp.weixin.qq.com/wiki?t=resource/res_main&id=mp1421140543
-
-    shared body
-
-    ToUserName
-    FromUserName
-    CreateTime
-    MsgType
-
-    text specific
-    <xml>
-      <Content><![CDATA[你好]]></Content>
-    </xml>
-
-    image specific
-    <xml>
-      <Image>
-        <MediaId><![CDATA[media_id]]></MediaId>
-      </Image>
-    </xml>
-
-    voice
-    <xml>
-      <Voice>
-        <MediaId><![CDATA[media_id]]></MediaId>
-      </Voice>
-    </xml>
-
-    video
-    <xml>
-      <Video>
-        <MediaId><![CDATA[media_id]]></MediaId>
-        <Title><![CDATA[title]]></Title>
-        <Description><![CDATA[description]]></Description>
-      </Video>
-    </xml>
-
-    music
-    <xml>
-      <Music>
-        <Title><![CDATA[TITLE]]></Title>
-        <Description><![CDATA[DESCRIPTION]]></Description>
-        <MusicUrl><![CDATA[MUSIC_Url]]></MusicUrl>
-        <HQMusicUrl><![CDATA[HQ_MUSIC_Url]]></HQMusicUrl>
-        <ThumbMediaId><![CDATA[media_id]]></ThumbMediaId>
-      </Music>
-    </xml>
-
-    news
-    <xml>
-      <ArticleCount>2</ArticleCount>
-      <Articles>
-        <item>
-        <Title><![CDATA[title1]]></Title>
-        <Description><![CDATA[description1]]></Description>
-        <PicUrl><![CDATA[picurl]]></PicUrl>
-        <Url><![CDATA[url]]></Url>
-        </item>
-        <item>
-        <Title><![CDATA[title]]></Title>
-        <Description><![CDATA[description]]></Description>
-        <PicUrl><![CDATA[picurl]]></PicUrl>
-        <Url><![CDATA[url]]></Url>
-        </item>
-      </Articles>
-    </xml>
     """
+
+    defmodule Text do
+      @moduledoc """
+      text reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(content)a
+      defstruct @enforce_keys
+
+      @behaviour Access
+      def fetch(term, key),                    do: Map.fetch(term, key)
+      def get(term, key, default),             do: Map.get(term, key, default)
+      def get_and_update(data, key, function), do: Map.get_and_update(data, key, function)
+      def pop(data, key),                      do: Map.pop(data, key)
+    end
+
+    defmodule Image do
+      @moduledoc """
+      image reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(media_id)a
+      defstruct @enforce_keys
+    end
+
+    defmodule Voice do
+      @moduledoc """
+      voice reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(media_id)a
+      defstruct @enforce_keys
+    end
+
+    defmodule Video do
+      @moduledoc """
+      video reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(media_id)a
+      defstruct @enforce_keys ++ ~W(title description)a
+    end
+
+    defmodule Music do
+      @moduledoc """
+      music reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(h_q_music_url thumb_media_id)a
+      defstruct @enforce_keys ++ ~W(title description)a
+    end
+
+    defmodule News do
+      @moduledoc """
+      news reply message struct
+      """
+      @enforce_keys ~W(to_user_name from_user_name create_time msg_type)a ++ ~W(article_count articles title description pic_url url)a
+      defstruct @enforce_keys
+    end
+
+    def types, do: ~W(text image voice video music news)a
+  end
+
+  def msg_type(msg, type) do
+    Map.put(msg, "MsgType", type)
+  end
+
+  attrs_in_root = ~w(to_user_name from_user_name create_time content)a
+  for attr <- attrs_in_root do
+    msg_attr = attr |> to_string |> Macro.camelize
+    def unquote(attr)(msg, content) do
+      Map.put(msg, unquote(msg_attr), content)
+    end
+  end
+
+  sub_attrs = ~w(image voice video music)a
+  for attr <- sub_attrs do
+    msg_type = Atom.to_string(attr)
+    sub_attr = attr |> to_string |> String.capitalize
+
+    def unquote(attr)(msg, detail) when is_list(detail) or is_map(detail) do
+      detail =
+        for {k, v} <- detail, into: %{} do
+          {to_msg_attr(k), v}
+        end
+
+      msg
+      |> Map.put("MsgType", unquote(msg_type))
+      |> Map.put(unquote(sub_attr), detail)
+    end
+
+    def media_id(%{"MsgType" => unquote(msg_type)} = msg, id) do
+      put_in_sub(msg, unquote(msg_type), "MediaId", id)
+    end
+
+    def title(%{"MsgType" => unquote(msg_type)} = msg, content) do
+      put_in_sub(msg, unquote(msg_type), "Title", content)
+    end
+
+    def description(%{"MsgType" => unquote(msg_type)} = msg, content) do
+      put_in_sub(msg, unquote(msg_type), "Description", content)
+    end
+  end
+
+  def media_id(_, _), do: raise "media id cannot be set, due to the type of message are unknown"
+  def title(_, _),    do: raise "title cannot be set, due to the type of message are unknown"
+  def description(_, _),    do: raise "title cannot be set, due to the type of message are unknown"
+
+  def music_url(msg, content),      do: Map.update(msg, "Music", %{}, & Map.put(&1, "MusicUrl", content))
+  def hq_music_url(msg, content),   do: Map.update(msg, "Music", %{}, & Map.put(&1, "HQMusicUrl", content))
+  def thumb_media_id(msg, content), do: Map.update(msg, "Music", %{}, & Map.put(&1, "ThumbMediaId", content))
+
+  def article(msg, item) do
+    item = for {k, v} <- item, into: %{} do
+      {to_msg_attr(k), v}
+    end
+
+    msg
+    |> Map.update("Articles", [item: item], fn articles ->
+      articles ++ [item: item]
+    end)
+    |> Map.update("ArticleCount", 1, & &1 + 1)
+  end
+
+  defp put_in_sub(%{"MsgType" => type} = msg, type, attr, content) do
+    Map.update(msg, String.capitalize(type), %{attr => content}, & Map.put(&1, attr, content))
+  end
+
+  defp to_msg_attr(:hq_music_url), do: "HQMusicUrl"
+  defp to_msg_attr(attr) when is_atom(attr) do
+    attr |> to_string |> Macro.camelize
   end
 end
