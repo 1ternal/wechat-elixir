@@ -35,14 +35,14 @@ if Code.ensure_loaded?(Plug) do
 
     @doc false
     defmacro __using__(_opts) do
-      quote location: :keep do
+      quote do
         import unquote(__MODULE__)
 
         plug Wechat.Plugs.HandleReply,
           mod: Application.get_env(:wechat, Wechat)[:message_handler]
 
         def action(conn, _opt) do
-          args = [conn, conn.params, conn.assigns[:msg]]
+          args = [conn, conn.params, {conn.assigns[:msg], conn.assigns[:reply]}]
           apply(__MODULE__, action_name(conn), args)
         end
 
@@ -50,7 +50,13 @@ if Code.ensure_loaded?(Plug) do
       end
     end
 
-    def reply(message, conn) do
+    def reply(conn) do
+      reply_message = conn.assigns[:reply]
+      reply(conn, reply_message)
+    end
+    def reply(conn, message) do
+      message = Wechat.Utils.MsgParser.restore(message)
+      IO.inspect(message)
       xml_msg =
         case conn.assigns[:msg_type] do
           :encrypt ->
@@ -84,9 +90,20 @@ if Code.ensure_loaded?(Plug) do
     defp build_xml(reply) do
       content =
         reply
-        |> Enum.map(fn {k, v} -> XmlBuilder.element(k, nil, v) end)
+        |> do_build_xml
         |> XmlBuilder.generate
       "<xml>#{content}</xml>"
+    end
+
+    defp do_build_xml(result) do
+      result
+      |> Enum.map(fn {k, v} ->
+        case v do
+          v when is_list(v) or is_map(v) -> XmlBuilder.element(k, nil, do_build_xml(v))
+          v when is_nil(v) -> XmlBuilder.element(k, nil, "")
+          _                -> XmlBuilder.element(k, nil, v)
+        end
+      end)
     end
   end
 end

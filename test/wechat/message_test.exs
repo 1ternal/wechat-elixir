@@ -13,11 +13,11 @@ defmodule Wechat.MessageTest do
         |> Message.create_time(1231412124)
         |> Message.content("helloworld")
 
-      assert msg["ToUserName"]   == "zhangsan"
-      assert msg["FromUserName"] == "lisi"
-      assert msg["CreateTime"]   == 1231412124
-      assert msg["MsgType"]      == "text"
-      assert msg["Content"]      == "helloworld"
+      assert msg[:to_user_name]   == "zhangsan"
+      assert msg[:from_user_name] == "lisi"
+      assert msg[:create_time]    == 1231412124
+      assert msg[:msg_type]       == "text"
+      assert msg[:content]        == "helloworld"
     end
 
     test "image" do
@@ -29,9 +29,9 @@ defmodule Wechat.MessageTest do
       msg2 = Message.image(bare_reply(), media_id: "some_media_id")
 
       for msg <- [msg1, msg2] do
-        assert msg["MsgType"] == "image"
-        assert Map.has_key?(msg, "Image")
-        assert get_in(msg, ["Image", "MediaId"]) == "some_media_id"
+        assert msg[:msg_type] == "image"
+        assert Map.has_key?(msg, :image)
+        assert get_in(msg, [:image, :media_id]) == "some_media_id"
       end
     end
 
@@ -46,11 +46,11 @@ defmodule Wechat.MessageTest do
       msg2 = Message.video(bare_reply(), media_id: "lorem", title: "lorem", description: "lorem")
 
       for msg <- [msg1, msg2] do
-        assert msg["MsgType"] == "video"
-        assert Map.has_key?(msg, "Video")
-        assert get_in(msg, ["Video", "MediaId"])     == "lorem"
-        assert get_in(msg, ["Video", "Description"]) == "lorem"
-        assert get_in(msg, ["Video", "Title"])       == "lorem"
+        assert msg[:msg_type] == "video"
+        assert Map.has_key?(msg, :video)
+        assert get_in(msg, [:video, :media_id])     == "lorem"
+        assert get_in(msg, [:video, :description]) == "lorem"
+        assert get_in(msg, [:video, :title])       == "lorem"
       end
     end
 
@@ -71,13 +71,13 @@ defmodule Wechat.MessageTest do
                                          hq_music_url:   "lorem hq_music_url",
                                          thumb_media_id: "lorem thumb_media_id")
       for msg <- [msg1, msg2] do
-        assert msg["MsgType"] == "music"
-        assert Map.has_key?(msg, "Music")
-        assert get_in(msg, ["Music", "Title"])        == "lorem title"
-        assert get_in(msg, ["Music", "Description"])  == "lorem description"
-        assert get_in(msg, ["Music", "MusicUrl"])     == "lorem music_url"
-        assert get_in(msg, ["Music", "HQMusicUrl"])   == "lorem hq_music_url"
-        assert get_in(msg, ["Music", "ThumbMediaId"]) == "lorem thumb_media_id"
+        assert msg[:msg_type] == "music"
+        assert Map.has_key?(msg, :music)
+        assert get_in(msg, [:music, :title])          == "lorem title"
+        assert get_in(msg, [:music, :description])    == "lorem description"
+        assert get_in(msg, [:music, :music_url])      == "lorem music_url"
+        assert get_in(msg, [:music, :hq_music_url])   == "lorem hq_music_url"
+        assert get_in(msg, [:music, :thumb_media_id]) == "lorem thumb_media_id"
       end
     end
 
@@ -102,45 +102,48 @@ defmodule Wechat.MessageTest do
         |> Message.article(a1)
         |> Message.article(a2)
 
-      assert msg["ArticleCount"] == 2
-      assert length(msg["Articles"]) == 2
+      assert msg[:article_count] == 2
+      assert length(msg[:articles]) == 2
 
-      a1_map = for {k, v} <- a1, into: %{} do
-        {Macro.camelize("#{k}"), v}
-      end
+      a1_map = Enum.into(a1, %{})
+      a2_map = Enum.into(a2, %{})
 
-      a2_map = for {k, v} <- a2, into: %{} do
-        {Macro.camelize("#{k}"), v}
-      end
-      {a1, rest} = Keyword.pop_first(msg["Articles"], :item)
+      {a1, rest} = Keyword.pop_first(msg[:articles], :item)
       assert a1 == a1_map
       {a2, _} = Keyword.pop_first(rest, :item)
       assert a2 == a2_map
     end
   end
 
-  # describe "message getter" do
-  #   test "text message" do
-  #     msg = %{
-  #       "ToUserName"   => "toUser",
-  #       "FromUserName" => "fromUser",
-  #       "CreateTime"   => 1348831860,
-  #       "MsgType"      => "text",
-  #       "Content"      => "helloworld"
-  #     }
-  #     assert Message.to_user_name(msg)   == "toUser"
-  #     assert Message.from_user_name(msg) == "fromUser"
-  #     assert Message.create_time(msg)    == 1348831860
-  #     assert Message.msg_type(msg)       == "text"
-  #     assert Message.content(msg)        == "helloworld"
-  #   end
-  # end
+  describe "use mod" do
+    defmodule Builder do
+      import Wechat.Message
+
+      def message do
+        msg =
+          %{
+            to_user_name:   "toUser",
+            from_user_name: "fromUser",
+            create_time:    1348831860,
+          }
+          |> msg_type("text")
+          |> content("hello world")
+      end
+    end
+
+    test "inject method" do
+      message = Builder.message()
+
+      assert message[:content] == "hello world"
+      assert message[:msg_type] == "text"
+    end
+  end
 
   defp bare_reply do
     %{
-      "ToUserName"   => "toUser",
-      "FromUserName" => "fromUser",
-      "CreateTime"   => 1348831860,
+      to_user_name:   "toUser",
+      from_user_name: "fromUser",
+      create_time:    1348831860,
     }
   end
 end

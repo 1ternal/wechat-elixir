@@ -7,7 +7,7 @@ defmodule Wechat.Plugs.HandleReply do
 
   def init(opt) do
     Keyword.merge([
-      mod: Wechat.Message.Responder
+      mod: Wechat.Message.Builder
     ], opt)
   end
 

@@ -74,12 +74,12 @@ defmodule Wechat.Plugs.CheckMsgSignatureTest do
   end
 
   defp assert_message_body(message) do
-    assert Map.get(message, "Content")
-    assert Map.get(message, "CreateTime")
-    assert Map.get(message, "FromUserName")
-    assert Map.get(message, "MsgId")
-    assert Map.get(message, "MsgType")
-    assert Map.get(message, "ToUserName")
+    assert Map.get(message, :content)
+    assert Map.get(message, :create_time)
+    assert Map.get(message, :from_user_name)
+    assert Map.get(message, :msg_id)
+    assert Map.get(message, :msg_type)
+    assert Map.get(message, :to_user_name)
   end
 
   defp build_conn(body, params \\nil)

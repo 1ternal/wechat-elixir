@@ -4,132 +4,95 @@ defmodule Wechat.Utils.MsgParser do
   Generate a map structured message with plain xml.
   """
 
-  require Logger
-
   @doc ~S"""
-  parse xml doc using floki
+  parse the incoming xml message
+  atomify and underscore the key
 
   ## Example
-      iex> Wechat.Utils.MsgParser()
+      iex> Wechat.Utils.MsgParser.parse("...")
           %{
-            "ToUserName"   => "...",
-            "FromUserName" => "...",
-            "CreateTime"   => "...",
-            "MsgType"      => "...",
-            "MsgId"        => "...",
+            to_user_name:    "...",
+            from_user_name:  "...",
+            create_time:     "...",
+            msg_type:        "...",
+            msg_id:          "...",
           }
-
-  All messages type
-  shared attrs
-  <xml>
-    <ToUserName><![CDATA[toUser]]></ToUserName>
-    <FromUserName><![CDATA[fromUser]]></FromUserName>
-    <CreateTime>1348831860</CreateTime>
-    <MsgType><![CDATA[text]]></MsgType>
-    <MsgId>1234567890123456</MsgId>
-  </xml>
-
-  Text
-  <xml>
-    <MsgType><![CDATA[text]]></MsgType>
-    <Content><![CDATA[this is a test]]></Content>
-  </xml>
-
-  Picture
-  <xml>
-    <MsgType><![CDATA[image]]></MsgType>
-    <PicUrl><![CDATA[this is a url]]></PicUrl>
-    <MediaId><![CDATA[media_id]]></MediaId>
-  </xml>
-
-  Audio
-  <xml>
-    <MsgType><![CDATA[voice]]></MsgType>
-    <MediaId><![CDATA[media_id]]></MediaId>
-    <Format><![CDATA[Format]]></Format>
-    <Recognition><![CDATA[腾讯微信团队]]></Recognition>
-  </xml>
-
-  Video
-  <xml>
-    <MsgType><![CDATA[video]]></MsgType>
-    <MediaId><![CDATA[media_id]]></MediaId>
-    <ThumbMediaId><![CDATA[thumb_media_id]]></ThumbMediaId>
-  </xml>
-
-  Shortvideo
-  <xml>
-    <MsgType><![CDATA[shortvideo]]></MsgType>
-    <MediaId><![CDATA[media_id]]></MediaId>
-    <ThumbMediaId><![CDATA[thumb_media_id]]></ThumbMediaId>
-  </xml>
-
-  Location
-  <xml>
-    <MsgType><![CDATA[location]]></MsgType>
-    <Location_X>23.134521</Location_X>
-    <Location_Y>113.358803</Location_Y>
-    <Scale>20</Scale>
-    <Label><![CDATA[位置信息]]></Label>
-  </xml>
-
-  Link
-  <xml>
-    <MsgType><![CDATA[link]]></MsgType>
-    <Title><![CDATA[公众平台官网链接]]></Title>
-    <Description><![CDATA[公众平台官网链接]]></Description>
-    <Url><![CDATA[url]]></Url>
-  </xml>
-
-  Encrypted message
-  <xml>
-    <ToUserName></ToUserName>
-    <Encrypt> </Encrypt>
-  </xml>
   """
-
-  def parse(xml) do
+  def parse(xml) when is_binary(xml) do
     [{"xml", [], attrs}] = Floki.find(xml, "xml")
     for {key, _, [value]} <- attrs, into: %{} do
-      {restore_key(key), value}
+      {parse_key(key), value}
     end
   end
 
-  key_mapping = %{
-    # shared attrs
-    "fromusername" => "FromUserName",
-    "tousername"   => "ToUserName",
-    "msgtype"      => "MsgType",
-    "createtime"   => "CreateTime",
-    "msgid"        => "MsgId",
-    # text
-    "content"      => "Content",
-    "mediaid"      => "MediaId",
-    # image
-    "picurl"       => "PicUrl",
-    # voice
-    "format"       => "Format",
-    "recognition"  => "Recognition",
-    # video & shortvideo
-    "thumbmediaid" => "ThumbMediaId",
-    # location
-    "location_x"   => "Location_X",
-    "location_y"   => "Location_Y",
-    "scale"        => "Scale",
-    "label"        => "Label",
-    # link
-    "title"        => "Title",
-    "description"  => "Description",
-    "url"          => "Url",
-
-    # Enctyped message
-    "encrypt"      => "Encrypt"
-  }
-  for {fk, ok} <- key_mapping do
-    defp restore_key(unquote(fk)), do: unquote(ok)
+  @doc """
+  restore the reply message
+  stringtify and camelize the key
+  ## Example
+      iex> Wechat.Utils.MsgParser.restore("...")
+          %{
+            ToUserName:    "...",
+            FromUserName:  "...",
+            CreateTime:     "...",
+            MsgType:        "...",
+          }
+  """
+  def restore(reply) when is_map(reply) do
+    for {k, v} <- reply, into: %{} do
+      {restore_key(k), restore(v)}
+    end
   end
-  defp restore_key(k) do
-    Logger.error("#{k} key canont restored.")
-    k
+  def restore(reply) when is_list(reply) do
+    for {k, v} <- reply do
+      {restore_key(k), restore(v)}
+    end
+  end
+  def restore(v), do: v
+
+  key_mapping = %{
+    from_user_name:  "FromUserName",
+    to_user_name:    "ToUserName",
+    msg_type:        "MsgType",
+    create_time:     "CreateTime",
+    msg_id:          "MsgId",
+    # incoming
+    content:         "Content",
+    media_id:        "MediaId",
+    pic_url:         "PicUrl",
+    format:          "Format",
+    recognition:     "Recognition",
+    thumb_media_id:  "ThumbMediaId",
+    location_x:      "Location_X",
+    location_y:      "Location_Y",
+    scale:           "Scale",
+    label:           "Label",
+    title:           "Title",
+    description:     "Description",
+    url:             "Url",
+    encrypt:         "Encrypt",
+    # event
+    event:          "Event",
+    event_key:      "EventKey",
+    ticket:         "Ticket",
+    latitude:       "Latitude",
+    longitude:      "Longitude",
+    precision:      "Precision",
+
+    # reply
+    image:           "Image",
+    voice:           "Voice",
+    video:           "Video",
+    music:           "Music",
+    hq_music_url:    "HQMusicUrl",
+    music_url:       "MusicUrl",
+    article_count:   "ArticleCount",
+    articles:        "Articles",
+    item:            "item",
+  }
+  for {atom_key, origin_key} <- key_mapping do
+    floki_key = String.downcase(origin_key)
+    defp parse_key(unquote(floki_key)), do: unquote(atom_key)
+
+    defp restore_key(unquote(atom_key)), do: unquote(origin_key)
   end
 end

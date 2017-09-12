@@ -3,22 +3,22 @@ defmodule Wechat.Message.BuilderTest do
 
   describe "Module behaviour" do
     test "reply any message" do
-      recv_msg = :text |> message |> Map.put("Content", "whatever")
+      recv_msg = :text |> message |> Map.put(:content, "whatever")
       reply = Wechat.Message.Builder.reply(recv_msg)
 
       # reply backbone
-      assert reply["FromUserName"]
-      assert reply["ToUserName"]
-      assert reply["MsgType"]
-      assert reply["CreateTime"]
+      assert reply[:from_user_name]
+      assert reply[:to_user_name]
+      assert reply[:msg_type]
+      assert reply[:create_time]
 
       # switch user
-      assert reply["FromUserName"] == recv_msg["ToUserName"]
-      assert reply["ToUserName"]   == recv_msg["FromUserName"]
+      assert reply[:from_user_name] == recv_msg[:to_user_name]
+      assert reply[:to_user_name]   == recv_msg[:from_user_name]
 
       # default reply with text message
-      assert reply["MsgType"] == "text"
-      assert reply["CreateTime"] != recv_msg["CreateTime"]
+      assert reply[:msg_type] == "text"
+      assert reply[:create_time] != recv_msg[:create_time]
     end
   end
 
@@ -27,14 +27,14 @@ defmodule Wechat.Message.BuilderTest do
       use Wechat.Message.Builder
 
       from :text, fn reply ->
-        Map.put(reply, "Content", "from accept two ariry")
+        Map.put(reply, :content, "from accept two ariry")
       end
     end
 
     test "text with 2 arity" do
       txt = message(:text)
       result= ModDSLParam.reply(txt)
-      assert result["Content"] == "from accept two ariry"
+      assert result[:content] == "from accept two ariry"
     end
   end
 
@@ -125,20 +125,20 @@ defmodule Wechat.Message.BuilderTest do
       use Wechat.Message.Builder
 
       from :text, fn msg ->
-        Map.put(msg, "Content", "upper")
+        Map.put(msg, :content, "upper")
       end
 
       from :text, fn _, msg ->
-        Map.put(msg, "Content", "lower")
+        Map.put(msg, :content, "lower")
       end
     end
 
     test "function match order" do
       txt = message(:text)
-      hello_msg = Map.put(txt, "Content", "whaa")
+      hello_msg = Map.put(txt, :content, "whaa")
 
       result = ModB.reply(hello_msg)
-      assert result["Content"] == "upper"
+      assert result[:content] == "upper"
     end
   end
 
@@ -147,68 +147,68 @@ defmodule Wechat.Message.BuilderTest do
       use Wechat.Message.Builder
 
       from :image, fn reply ->
-        Map.put(reply, "Content", "mod_recv image")
+        Map.put(reply, :content, "mod_recv image")
       end
       from :link, fn reply ->
-        Map.put(reply, "Content", "mod_recv link")
+        Map.put(reply, :content, "mod_recv link")
       end
       from :location, fn reply ->
-        Map.put(reply, "Content", "mod_recv location")
+        Map.put(reply, :content, "mod_recv location")
       end
       from :shortvideo, fn reply ->
-        Map.put(reply, "Content", "mod_recv shortvideo")
+        Map.put(reply, :content, "mod_recv shortvideo")
       end
       from :text, fn reply ->
-        Map.put(reply, "Content", "mod_recv text")
+        Map.put(reply, :content, "mod_recv text")
       end
       from :video, fn reply ->
-        Map.put(reply, "Content", "mod_recv video")
+        Map.put(reply, :content, "mod_recv video")
       end
       from :voice, fn reply ->
-        Map.put(reply, "Content", "mod_recv voice")
+        Map.put(reply, :content, "mod_recv voice")
       end
     end
 
     test "image" do
       recv_msg = message(:image)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv image"
+      assert reply[:content] == "mod_recv image"
     end
 
     test "link" do
       recv_msg = message(:link)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv link"
+      assert reply[:content] == "mod_recv link"
     end
 
     test "location" do
       recv_msg = message(:location)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv location"
+      assert reply[:content] == "mod_recv location"
     end
 
     test "shortvideo" do
       recv_msg = message(:shortvideo)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv shortvideo"
+      assert reply[:content] == "mod_recv shortvideo"
     end
 
     test "text" do
       recv_msg = message(:text)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv text"
+      assert reply[:content] == "mod_recv text"
     end
 
     test "video" do
       recv_msg = message(:video)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv video"
+      assert reply[:content] == "mod_recv video"
     end
 
     test "voice" do
       recv_msg = message(:voice)
       reply = ModRecv.reply(recv_msg)
-      assert reply["Content"] == "mod_recv voice"
+      assert reply[:content] == "mod_recv voice"
     end
   end
 
@@ -218,135 +218,135 @@ defmodule Wechat.Message.BuilderTest do
 
       # user subscibe event
       from :event_subscribe, fn reply ->
-        Map.put(reply, "Content", "user subscibe event")
+        Map.put(reply, :content, "user subscibe event")
       end
 
       # user unsubscribe event
       from :event_unsubscribe, fn reply ->
-        Map.put(reply, "Content", "user unsubscribe event")
+        Map.put(reply, :content, "user unsubscribe event")
       end
 
       # unsubscriber scan with qrcode"
       from :event_scan, [with: "qrscene_123123"], fn reply ->
-        Map.put(reply, "Content", "unsubscriber scan with qrcode")
+        Map.put(reply, :content, "unsubscriber scan with qrcode")
       end
 
       # subscriber scan with qrcode"
       from :event_scan, [with: "fake_qr_id_1234"], fn _recv, reply ->
-        Map.put(reply, "Content", "subscriber scan with qrcode")
+        Map.put(reply, :content, "subscriber scan with qrcode")
       end
 
       # without specific scan with will get `EventKey`
       from :event_scan, fn recv, reply ->
         reply
-        |> Map.put("Content", Map.get(recv, "EventKey"))
+        |> Map.put(:content, Map.get(recv, :event_key))
       end
 
       # label location
       from :event_location, fn _recv, rep ->
-        Map.put(rep, "Content", "label location")
+        Map.put(rep, :content, "label location")
       end
 
       # user click menu
       from :event_click, [with: "BOOK_LUNCH"], fn _recv, rep ->
-        Map.put(rep, "Content", "user click menu")
+        Map.put(rep, :content, "user click menu")
       end
 
       # user view menu
       from :event_view, [with: "http://wechat.somewhere.com/view_url"], fn _recv, rep ->
-        Map.put(rep, "Content", "user view menu")
+        Map.put(rep, :content, "user view menu")
       end
     end
 
     test "subscribe" do
       sub_msg = with_event_message(%{
-        "MsgType"   => "event",
-        "Event"     => "subscribe"
+        msg_type: "event",
+        event:    "subscribe"
       })
       reply = EventMessageA.reply(sub_msg)
-      assert reply["Content"] == "user subscibe event"
+      assert reply[:content] == "user subscibe event"
     end
 
     test "unsubscribe" do
       unsub_msg = with_event_message(%{
-        "MsgType"   => "event",
-        "Event"     => "unsubscribe"
+        msg_type:  "event",
+        event:     "unsubscribe"
       })
       reply = EventMessageA.reply(unsub_msg)
-      assert reply["Content"] == "user unsubscribe event"
+      assert reply[:content] == "user unsubscribe event"
     end
 
     test "unsubscriber scan with qrcode" do
       qr_message =
         with_event_message(%{
-          "MsgType"   => "event",
-          "Event"     => "subscribe",
-          "EventKey"  => "qrscene_123123",
-          "Ticket"    => "qrscene_123123_ticket",
+          msg_type:   "event",
+          event:      "subscribe",
+          event_key:  "qrscene_123123",
+          ticket:     "qrscene_123123_ticket",
         })
       reply = EventMessageA.reply(qr_message)
-      assert reply["Content"] == "unsubscriber scan with qrcode"
+      assert reply[:content] == "unsubscriber scan with qrcode"
     end
 
     test "subscriber scan with qrcode" do
       scan_msg = with_event_message(%{
-        "MsgType"  => "event",
-        "Event"    => "SCAN",
-        "EventKey" => "fake_qr_id_1234",
-        "Ticket"   => "TICKET",
+        msg_type:  "event",
+        event:     "SCAN",
+        event_key: "fake_qr_id_1234",
+        ticket:    "TICKET",
       })
       reply = EventMessageA.reply(scan_msg)
-      assert reply["Content"] == "subscriber scan with qrcode"
+      assert reply[:content] == "subscriber scan with qrcode"
     end
 
     test "without specific scan with will get `EventKey`" do
       scan_msg = with_event_message(%{
-        "MsgType"  => "event",
-        "Event"    => "SCAN",
-        "EventKey" => "some event",
-        "Ticket"   => "TICKET",
+        msg_type:  "event",
+        event:     "SCAN",
+        event_key: "some event",
+        ticket:    "TICKET",
       })
       reply = EventMessageA.reply(scan_msg)
-      assert reply["Content"] == "some event"
+      assert reply[:content] == "some event"
     end
 
     test "label location" do
       loc_msg = with_event_message(%{
-        "MsgType"   => "event",
-        "Event"     => "LOCATION",
-        "Latitude"  => "23.137466",
-        "Longitude" => "113.352425",
-        "Precision" => "119.385040",
+        msg_type:  "event",
+        event:     "LOCATION",
+        latitude:  "23.137466",
+        longitude: "113.352425",
+        precision: "119.385040",
       })
       reply = EventMessageA.reply(loc_msg)
-      assert reply["Content"] == "label location"
+      assert reply[:content] == "label location"
     end
 
     test "user click menu" do
       click_msg = with_event_message(%{
-        "MsgType"  => "event",
-        "Event"    => "CLICK",
-        "EventKey" => "BOOK_LUNCH",
+        msg_type:  "event",
+        event:     "CLICK",
+        event_key: "BOOK_LUNCH",
       })
       reply = EventMessageA.reply(click_msg)
-      assert reply["Content"] == "user click menu"
+      assert reply[:content] == "user click menu"
     end
 
     test "user view menu" do
       view_msg = with_event_message(%{
-        "MsgType"  => "event",
-        "Event"    => "VIEW",
-        "EventKey" => "http://wechat.somewhere.com/view_url",
+        msg_type:  "event",
+        event:     "VIEW",
+        event_key: "http://wechat.somewhere.com/view_url",
       })
       reply = EventMessageA.reply(view_msg)
-      assert reply["Content"] == "user view menu"
+      assert reply[:content] == "user view menu"
     end
   end
 
   describe "DSL param `with` normal message" do
     defmodule Remote do
       def deal(msg) do
-        Map.put(msg, "Content", "message from remote")
+        Map.put(msg, :content, "message from remote")
       end
     end
 
@@ -354,11 +354,11 @@ defmodule Wechat.Message.BuilderTest do
       use Wechat.Message.Builder
 
       from :text, [with: "hello"], fn msg ->
-        Map.put(msg, "Content", "hello world")
+        Map.put(msg, :content, "hello world")
       end
 
       from :text, [with: "world"], fn _, msg ->
-        Map.put(msg, "Content", "world hello")
+        Map.put(msg, :content, "world hello")
       end
 
       from :text, [with: "get_recv"], fn recv, _ ->
@@ -369,52 +369,52 @@ defmodule Wechat.Message.BuilderTest do
     end
 
     test "text message reply with basic info" do
-      txt = :text |> message |> Map.put("Content", "message not match")
+      txt = :text |> message |> Map.put(:content, "message not match")
       reply = ModA.reply(txt)
 
-      assert reply["FromUserName"]
-      assert reply["ToUserName"]
-      assert reply["MsgType"]
-      assert reply["CreateTime"]
+      assert reply[:from_user_name]
+      assert reply[:to_user_name]
+      assert reply[:msg_type]
+      assert reply[:create_time]
 
       # use switched
-      assert reply["FromUserName"] == txt["ToUserName"]
-      assert reply["ToUserName"]   == txt["FromUserName"]
-      assert reply["MsgType"]      == "text"
+      assert reply[:from_user_name] == txt[:to_user_name]
+      assert reply[:to_user_name]   == txt[:from_user_name]
+      assert reply[:msg_type]      == "text"
       # CreateTime refreshed
-      assert reply["CreateTime"]   != txt["CreateTime"]
+      assert reply[:create_time]   != txt[:create_time]
     end
 
     test "text message fallback" do
-      msg = :text |> message |> Map.put("Content", "message not match")
+      msg = :text |> message |> Map.put(:content, "message not match")
       result = ModA.reply(msg)
-      assert result["Content"] == "wechat handler fallback message"
+      assert result[:content] == "wechat handler fallback message"
     end
 
     test "text message with &func/1" do
-      txt = :text |> message |> Map.put("Content", "hello")
+      txt = :text |> message |> Map.put(:content, "hello")
 
       reply = ModA.reply(txt)
-      assert reply["Content"] == "hello world"
+      assert reply[:content] == "hello world"
     end
 
     test "text message with &func/2" do
-      txt = :text |> message |> Map.put("Content", "world")
+      txt = :text |> message |> Map.put(:content, "world")
       reply = ModA.reply(txt)
-      assert reply["Content"] == "world hello"
+      assert reply[:content] == "world hello"
     end
 
     test "text message with remote func" do
-      txt = :text |> message |> Map.put("Content", "remote")
+      txt = :text |> message |> Map.put(:content, "remote")
       reply = ModA.reply(txt)
-      assert reply["Content"] == "message from remote"
+      assert reply[:content] == "message from remote"
     end
 
     test "text message with &func/2 get back receive message" do
-      txt = :text |> message |> Map.put("Content", "get_recv")
+      txt = :text |> message |> Map.put(:content, "get_recv")
 
       reply = ModA.reply(txt)
-      assert reply["CreateTime"] == txt["CreateTime"]
+      assert reply[:create_time] == txt[:create_time]
     end
   end
 
@@ -434,75 +434,91 @@ defmodule Wechat.Message.BuilderTest do
           recv_t   = unquote(recv_t)
           rep_t    = unquote(rep_t)
           reply = apply(mod_name, :reply, [message(recv_t)])
-          assert reply["MsgType"] == to_string(rep_t)
+          assert reply[:msg_type] == to_string(rep_t)
         end
       end
     end
   end
 
+  describe "reply func" do
+
+    defmodule RepMod do
+      use Wechat.Message.Builder
+
+      from :text, fn message ->
+        message
+        |> __MODULE__.text("Content")
+      end
+    end
+
+    test "#text/2" do
+      result = RepMod.reply(message(:text))
+    end
+  end
+
   msg_tpl = %{
     text: %{
-      "MsgType"      => "text",
-      "Content"      => "this is a test",
+      msg_type:       "text",
+      content:        "this is a test",
     },
 
     image: %{
-      "MsgType"      => "image",
-      "PicUrl"       => "this is url",
-      "MediaId"      => "media_id",
+      msg_type:       "image",
+      pic_url:        "this is url",
+      media_id:       "media_id",
     },
 
     voice: %{
-      "MsgType"     => "voice",
-      "MediaId"     => "media_id",
-      "Format"      => "Format",
-      "Recognition" => "腾讯微信团队",
+      msg_type:       "voice",
+      media_id:       "media_id",
+      format:         "Format",
+      recognition:    "腾讯微信团队",
     },
 
     video: %{
-      "MsgType" => "video",
-      "MediaId" => "media_id",
-      "ThumbMediaId" => "thumb_media_id",
+      msg_type:       "video",
+      media_id:       "media_id",
+      thumb_media_id: "thumb_media_id",
     },
 
     shortvideo: %{
-      "MsgType"      => "shortvideo",
-      "MediaId"      => "media_id",
-      "ThumbMediaId" => "thumb_media_id",
+      msg_type:       "shortvideo",
+      media_id:       "media_id",
+      thumb_media_id: "thumb_media_id",
     },
 
     location: %{
-      "MsgType"    => "location",
-      "Location_X" => "23.134521",
-      "Location_Y" => "113.358803",
-      "Scale"      => "20",
-      "Label"      => "位置信息",
+      msg_type:       "location",
+      location_x:     "23.134521",
+      location_y:     "113.358803",
+      scale:          "20",
+      label:          "位置信息",
     },
 
     link: %{
-      "MsgType"     => "link",
-      "Title"       => "公众平台官网链接",
-      "Description" => "公众平台官网链接",
-      "Url"         => "url",
+      msg_type:       "link",
+      title:          "公众平台官网链接",
+      description:    "公众平台官网链接",
+      url:            "url",
     },
   }
   for {type, tpl} <- msg_tpl do
     map = Macro.escape(tpl)
     def message(unquote(type)) do
       Map.merge(%{
-        "ToUserName"   => "toUser",
-        "FromUserName" => "fromUser",
-        "CreateTime"   => 1348831860,
-        "MsgId"        => "1234567890123456",
+        to_user_name:   "toUser",
+        from_user_name: "fromUser",
+        create_time:    1348831860,
+        msg_id:         "1234567890123456",
       }, unquote(map))
     end
   end
 
   defp with_event_message(msg) do
     Map.merge(%{
-      "ToUserName"   => "toUser",
-      "FromUserName" => "fromUser",
-      "CreateTime"   => 1348831860,
+      to_user_name:   "toUser",
+      from_user_name: "fromUser",
+      create_time:    1348831860,
     }, msg)
   end
 end

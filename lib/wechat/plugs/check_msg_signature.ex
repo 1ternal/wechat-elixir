@@ -35,20 +35,11 @@ if Code.ensure_loaded?(Plug) do
       |> MsgParser.parse
     end
 
-    defp get_message(%{"Encrypt" => _} = message, %{"msg_signature" => _} = params, opts) do
-      get_encrypt_mod_message(message, params, opts)
-    end
-    defp get_message(message, %{"msg_signature" => _}, _opts) do
-      {:ok, {:comp, message}}
-    end
-    defp get_message(message, _params, _opt) do
-      {:ok, {:plain, message}}
-    end
-
-    defp get_encrypt_mod_message(%{"Encrypt" => encrypted_message}, params, opts) do
+    defp get_message(%{encrypt: encrypted_message}, %{"msg_signature" => _} = params, opts) do
       appid            = Keyword.fetch!(opts, :appid)
       encoding_aes_key = Keyword.fetch!(opts, :encoding_aes_key)
       token            = Keyword.fetch!(opts, :token)
+
       with true          <- (valid_message?(encrypted_message, params, token) || :message_invalid),
            {^appid, xml} <- Cipher.decrypt(encrypted_message, encoding_aes_key),
            message       <- MsgParser.parse(xml)
@@ -58,6 +49,12 @@ if Code.ensure_loaded?(Plug) do
         :message_invalid       -> {:error, "invalid message"}
         _                      -> {:error, "message decrypte error"}
       end
+    end
+    defp get_message(message, %{"msg_signature" => _}, _opts) do
+      {:ok, {:comp, message}}
+    end
+    defp get_message(message, _params, _opt) do
+      {:ok, {:plain, message}}
     end
 
     defp handle_conn({:ok, {message_type, message}}, conn) do

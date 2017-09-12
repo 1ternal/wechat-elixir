@@ -45,20 +45,20 @@ defmodule Wechat.Message.Builder do
 
   defp defreply(receive_type, reply_type, nil, func) do
     case receive_type do
-      :event_subscribe        -> match_reply(%{"MsgType" => "event", "Event" => "subscribe"}, 5,   {reply_type, func})
-      :event_unsubscribe      -> match_reply(%{"MsgType" => "event", "Event" => "unsubscribe"}, 5, {reply_type, func})
-      :event_location         -> match_reply(%{"MsgType" => "event", "Event" => "LOCATION"},       {reply_type, func})
-      :event_scan             -> match_reply(%{"MsgType" => "event", "Event" => "SCAN"},           {reply_type, func})
-      type when is_atom(type) -> match_reply(%{"MsgType" => to_string(type)},                 {reply_type, func})
+      :event_subscribe        -> match_reply(%{msg_type: "event", event: "subscribe"}, 5,   {reply_type, func})
+      :event_unsubscribe      -> match_reply(%{msg_type: "event", event: "unsubscribe"}, 5, {reply_type, func})
+      :event_location         -> match_reply(%{msg_type: "event", event: "LOCATION"},       {reply_type, func})
+      :event_scan             -> match_reply(%{msg_type: "event", event: "SCAN"},           {reply_type, func})
+      type when is_atom(type) -> match_reply(%{msg_type: to_string(type)},                 {reply_type, func})
     end
   end
 
   defp defreply(receive_type, reply_type, matcher, func) when is_binary(matcher) do
     case receive_type do
-      :event_scan  -> match_reply(%{"MsgType" => "event", "EventKey" => matcher},                     {reply_type, func})
-      :event_click -> match_reply(%{"MsgType" => "event", "Event" => "CLICK", "EventKey" => matcher}, {reply_type, func})
-      :event_view  -> match_reply(%{"MsgType" => "event", "Event" => "VIEW", "EventKey" => matcher},  {reply_type, func})
-      :text        -> match_reply(%{"MsgType" => "text", "Content" => matcher},                      {reply_type, func})
+      :event_scan  -> match_reply(%{msg_type: "event", event_key: matcher},                 {reply_type, func})
+      :event_click -> match_reply(%{msg_type: "event", event: "CLICK", event_key: matcher}, {reply_type, func})
+      :event_view  -> match_reply(%{msg_type: "event", event: "VIEW", event_key: matcher},  {reply_type, func})
+      :text        -> match_reply(%{msg_type: "text",  content: matcher},                   {reply_type, func})
     end
   end
 
@@ -77,7 +77,7 @@ defmodule Wechat.Message.Builder do
     end
   end
 
-  def reply(msg, type \\ :text)
+  def reply(msg), do: reply_fallback(msg)
   def reply(msg, type) do
     msg
     |> switch_user
@@ -96,12 +96,12 @@ defmodule Wechat.Message.Builder do
   def reply_fallback(msg) do
     msg
     |> reply(:text)
-    |> Map.put("Content", "wechat handler fallback message")
+    |> Map.put(:content, "wechat handler fallback message")
   end
 
   defp reply_type(msg, type) do
     msg
-    |> Map.put("MsgType", String.downcase(to_string(type)))
+    |> Map.put(:msg_type, String.downcase(to_string(type)))
     |> populate_message(type)
   end
 
@@ -167,42 +167,35 @@ defmodule Wechat.Message.Builder do
   def must_have_with_params?(:batch_job), do: true
   def must_have_with_params?(_),          do: false
 
-  defp switch_user(%{"FromUserName" => from, "ToUserName" => to}) do
-    %{"FromUserName" => to, "ToUserName" => from}
+  defp switch_user(%{from_user_name: from, to_user_name: to}) do
+    %{from_user_name: to, to_user_name: from}
   end
 
   defp required_attrs(params)  do
     params
-    |> Map.put("CreateTime", DateTime.utc_now |> DateTime.to_unix)
-    |> Map.put("MsgType", "text")
+    |> Map.put(:create_time, DateTime.utc_now |> DateTime.to_unix)
+    |> Map.put(:msg_type, "text")
   end
 
   defp populate_message(message, :text) do
-    Map.merge(message,  %{"Content" => nil})
+    Map.merge(message,  %{content: nil})
   end
   defp populate_message(message, :image) do
-    Map.merge(message, %{"Image" => %{"MediaId" => nil}})
+    Map.merge(message, %{image: %{media_id: nil}})
   end
   defp populate_message(message, :voice) do
-    Map.merge(message, %{"Voice" => %{"MediaId" => nil}})
+    Map.merge(message, %{voice: %{media_id: nil}})
   end
   defp populate_message(message, :video) do
-    Map.merge(message, %{"Video" => %{"MediaId" => nil, "Title" => nil, "Description" => nil}})
+    Map.merge(message, %{video: %{media_id: nil, title: nil, description: nil}})
   end
   defp populate_message(message, :music) do
-    Map.merge(message, %{"Music" => %{"Title" => nil, "Description" => nil, "MusicUrl" => nil, "HQMusicUrl" => nil, "ThumbMediaId" => nil}})
+    Map.merge(message, %{music: %{title: nil, description: nil, music_url: nil, hq_music_url: nil, thumb_media_id: nil}})
   end
   defp populate_message(message, :news) do
     Map.merge(message, %{
-      "ArticleCount" => nil,
-      "Articles" => [
-        item: %{
-          "Title" => nil,
-          "Description" => nil,
-          "PicUrl" => nil,
-          "Url" => nil
-        }
-      ]
-      })
+      article_count: nil,
+      articles: []
+    })
   end
 end
