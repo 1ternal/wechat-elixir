@@ -1,61 +1,87 @@
 defmodule Wechat.Message.ResponderTest do
   use ExUnit.Case, async: true
+  use Plug.Test
 
-  defmodule A do
+  defmodule UB do
     use Wechat.Message.Responder
 
-    def handle_message(:text, %{content: "hello"} = msg) do
-      Map.put(msg, :content, "hello pattern matched")
-    end
-
-    def handle_message(:text, msg) do
-      Map.put(msg, :content, "hello not matched")
-    end
-
-    def handle_message(:image, %{pic_url: "www.qq.com/lorem"} = msg) do
-      Map.put(msg, :pic_url, "www.qq.com/lorem matched")
-    end
-
-    def handle_message(:image, msg) do
-      Map.put(msg, :pic_url, "www.qq.com/lorem not matched")
+    def before_reply(_msg) do
+      raise "this func called"
     end
   end
 
-  test "#handle_message text pattern match" do
-    txt = :text |> message |> Map.put(:content, "hello")
-    result = A.handle_message(:text, txt)
-    assert result[:content] == "hello pattern matched"
+  test "send_reply imported" do
+    assert function_exported?(UB, :send_reply, 1)
+    assert function_exported?(UB, :send_reply, 2)
   end
 
-  test "#handle_message text not match" do
-    txt = :text |> message |> Map.put(:content, "lorem not exist")
-    result = A.handle_message(:text, txt)
-    assert result[:content] == "hello not matched"
+  test "override before_send" do
+    assert_raise RuntimeError, fn ->
+      conn("POST", "/") |> UB.send_reply
+    end
   end
 
-  test "#handle_message image pattern match" do
-    txt = :image |> message |> Map.put(:pic_url, "www.qq.com/lorem")
-    result = A.handle_message(:image, txt)
-    assert result[:pic_url] == "www.qq.com/lorem matched"
+  describe "handle message" do
+    defmodule RB do
+      use Wechat.Message.Responder
+
+      def handle_message(:text, %{content: "hello"} = msg) do
+        text(msg, "hello pattern matched")
+      end
+      def handle_message(:text, msg) do
+        text(msg, "hello not matched")
+      end
+
+      def handle_message(:image, %{image: %{pic_url: "www.qq.com/lorem"}} = msg) do
+        text(msg, "www.qq.com/lorem matched")
+      end
+      def handle_message(:image, msg) do
+        text(msg, "www.qq.com/lorem not matched")
+      end
+    end
+
+    test "#handle_message text pattern match" do
+      txt = :text |> message |> Map.put(:content, "hello")
+      result = RB.handle_message(:text, txt)
+      assert result[:content] == "hello pattern matched"
+    end
+
+    test "#handle_message text not match" do
+      txt = :text |> message |> Map.put(:content, "lorem not exist")
+      result = RB.handle_message(:text, txt)
+      assert result[:content] == "hello not matched"
+    end
+
+    test "#handle_message image pattern match" do
+      txt = :image |> message |> Map.put(:image, %{pic_url: "www.qq.com/lorem"})
+      result = RB.handle_message(:image, txt)
+      assert result[:content] == "www.qq.com/lorem matched"
+    end
+
+    test "#handle_message image not match" do
+      txt = :image |> message |> Map.put(:pic_url, "lorem not exist")
+      result = RB.handle_message(:image, txt)
+      assert result[:content] == "www.qq.com/lorem not matched"
+    end
   end
 
-  test "#handle_message image not match" do
-    txt = :image |> message |> Map.put(:pic_url, "lorem not exist")
-    result = A.handle_message(:image, txt)
-    assert result[:pic_url] == "www.qq.com/lorem not matched"
-  end
+  describe "fallback" do
+    defmodule Fallback do
+      use Wechat.Message.Responder
+    end
 
-  defmodule Fallback do
-    use Wechat.Message.Responder
-  end
+    for type <- ~W(text image voice video shortvideo location link)a do
+      test "#handle_message fallback #{type} type" do
+        msg = unquote(type) |> message
+        result = Fallback.handle_message(unquote(type), msg)
+        assert result[:content] == "fallback"
+      end
 
-  for type <- ~W(text image voice video shortvideo location link)a do
-    test "#handle_message fallback with #{type} type" do
-      msg = unquote(type) |> message
-
-      result = Fallback.handle_message(unquote(type), msg)
-
-      assert result[:content] == "fallback"
+      test "#handle_event fallback #{type} type" do
+        msg = unquote(type) |> message
+        result = Fallback.handle_event(unquote(type), msg)
+        assert result[:content] == "fallback"
+      end
     end
   end
 

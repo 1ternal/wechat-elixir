@@ -7,20 +7,19 @@ defmodule Wechat.Plugs.HandleReply do
 
   def init(opt) do
     Keyword.merge([
-      mod: Wechat.Message.Responder
+      handler: Wechat.Message.Responder
     ], opt)
   end
 
   def call(conn, opts) do
-    handler = Keyword.fetch!(opts, :mod)
+    handler = Keyword.fetch!(opts, :handler)
 
     case msg = conn.assigns[:msg] do
       nil ->
         put_private(conn, @replied_key, false)
       %{} ->
-        reply = handle_reply(handler, msg)
         conn
-        |> assign(:reply, reply)
+        |> assign(:reply, handle_reply(handler, msg))
         |> put_private(@replied_key, true)
     end
   end
