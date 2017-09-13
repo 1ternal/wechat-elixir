@@ -88,6 +88,43 @@ defmodule Wechat.Utils.MsgParserTest do
     }
   end
 
+  test "#build_xml" do
+    restored_news = %{
+      "ArticleCount" => 2,
+      "Articles" => [
+        {"item",%{"Description" => "lorem item 1", "PicUrl" => "lorem item 1", "Title" => "lorem item 1", "Url" => "lorem item 1"}},
+        {"item", %{"Description" => "lorem item 2", "PicUrl" => "lorem item 2", "Title" => "lorem item 2", "Url" => "lorem item 2"}}
+      ],
+      "CreateTime" => "lorem root leval", "FromUserName" => "lorem root leval",
+      "MsgType" => "lorem root leval", "ToUserName" => "lorem root leval"
+    }
+
+    result = Parser.build_xml(restored_news)
+    target_xml = [
+      ~S(<xml><ArticleCount>2</ArticleCount>),
+      ~S(<Articles>),
+      ~S(<item>),
+        ~S(<Description>lorem item 1</Description>),
+        ~S(<PicUrl>lorem item 1</PicUrl>),
+        ~S(<Title>lorem item 1</Title>),
+        ~S(<Url>lorem item 1</Url></item>),
+      ~S(<item>),
+        ~S(<Description>lorem item 2</Description>),
+        ~S(<PicUrl>lorem item 2</PicUrl>),
+        ~S(<Title>lorem item 2</Title>),
+        ~S(<Url>lorem item 2</Url></item>),
+      ~S(</Articles>),
+      ~S(<CreateTime>lorem root leval</CreateTime>),
+      ~S(<FromUserName>lorem root leval</FromUserName>),
+      ~S(<MsgType>lorem root leval</MsgType>),
+      ~S(<ToUserName>lorem root leval</ToUserName></xml>),
+    ]
+
+    # xml builder not minified :<
+    result = String.replace(result, ~R([\n|\t]), "")
+    assert result == Enum.join(target_xml)
+  end
+
   defp xml_tpl(k) do
     ~s|<xml><#{k}>whatever</#{k}></xml>|
   end

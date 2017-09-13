@@ -5,6 +5,8 @@ defmodule Wechat.Message.Responder do
   use Wechat.Message.Responder
   """
 
+  alias Wechat.Utils.{Cipher, MsgParser}
+
   defmacro __using__(_opt) do
     quote do
       import Wechat.Message.ReplyBuilder
@@ -33,5 +35,27 @@ defmodule Wechat.Message.Responder do
         |> Wechat.Message.ReplyBuilder.text("fallback")
       end
     end
+  end
+
+  def send_reply(conn, message) do
+    xml_msg =
+      message
+      |> MsgParser.restore
+      |> maybe_encrypt_message(conn)
+      |> MsgParser.build_xml
+
+    conn
+    |> Plug.Conn.put_resp_content_type("text/xml")
+    |> Plug.Conn.send_resp(200, xml_msg)
+  end
+
+  defp maybe_encrypt_message(message, %Plug.Conn{assigns: %{msg_type: :encrypt}}) do
+    encoding_ase_key = Wechat.encoding_aes_key
+    token            = Wechat.token
+    Cipher.encrypt_message(message, encoding_ase_key, token)
+  end
+
+  defp maybe_encrypt_message(message, %Plug.Conn{assigns: %{msg_type: t}}) when t in [:plain, :comp] do
+    message
   end
 end

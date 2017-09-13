@@ -13,6 +13,24 @@ defmodule Wechat.Message.ReplyBuilderTest do
     {:ok, reply: bare_reply}
   end
 
+  test "remove uneed attributes" do
+    receive_message = %{
+      content: "hello",
+      create_time: "123123123",
+      from_user_name: "from_user_name",
+      msg_id: "123123123",
+      msg_type: "text",
+      to_user_name: "to_user_name",
+      url: "http://localhost"
+    }
+
+    result = ReplyBuilder.type(receive_message, :image)
+
+    refute Map.has_key?(result, :content)
+    refute Map.has_key?(result, :msg_id)
+    refute Map.has_key?(result, :url)
+  end
+
   test "root element", %{reply: reply} do
     reply =
       reply

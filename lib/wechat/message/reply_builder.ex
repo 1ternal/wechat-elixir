@@ -15,8 +15,8 @@ defmodule Wechat.Message.ReplyBuilder do
 
   defp default_reply_with(%{} = msg, type) when is_binary(type) do
     msg
-    |> msg_type(type)
     |> switch_user
+    |> msg_type(type)
     |> create_time(System.system_time(:seconds))
   end
 
@@ -98,7 +98,7 @@ defmodule Wechat.Message.ReplyBuilder do
     Map.update(msg, top_level,  %{next_level => content}, & Map.put(&1, next_level, content))
   end
 
-  def switch_user(%{from_user_name: from, to_user_name: to} = msg) do
-    %{msg | from_user_name: to, to_user_name: from}
+  def switch_user(%{from_user_name: from, to_user_name: to}) do
+    %{from_user_name: to, to_user_name: from}
   end
 end

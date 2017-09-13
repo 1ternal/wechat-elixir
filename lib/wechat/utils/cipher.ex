@@ -2,6 +2,22 @@ defmodule Wechat.Utils.Cipher do
   @moduledoc """
   Encrypt and Decrypt wechat msg.
   """
+  alias Wechat.Utils.MsgParser
+
+  def encrypt_message(reply, encoding_ase_key, token) do
+    message          = encrypt(MsgParser.build_xml(reply), encoding_ase_key)
+
+    timestamp = System.system_time(:seconds)
+    nonce     = Base.encode16(:crypto.strong_rand_bytes(5), case: :lower)
+    signature = Wechat.Utils.Signature.sign([token, timestamp, nonce, message])
+
+    %{
+      "Encrypt"      => message,
+      "MsgSignature" => signature,
+      "TimeStamp"    => timestamp,
+      "Nonce"        => nonce,
+    }
+  end
 
   @aes_block_size 32
   def encrypt(plain_data, encoding_aes_key) do

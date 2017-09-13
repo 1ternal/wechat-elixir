@@ -2,6 +2,61 @@ defmodule Wechat.Message.ResponderTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
+  alias Wechat.Message.Responder
+
+  setup_all do
+    # disable checks for invalid header keys
+    Application.put_env(:plug, :validate_header_keys_during_test, true)
+
+    :ok
+  end
+
+  test "#send_reply with plain data" do
+    conn =
+      conn("POST", "/")
+      |> Plug.Conn.assign(:msg_type, :plain)
+
+    reply = %{
+      to_user_name:    "toUser",
+      from_user_name:  "fromUser",
+      create_time:     "12345678",
+      msg_type:        "text",
+      content:         "你好",
+    }
+
+    %Plug.Conn{resp_body: body} = Responder.send_reply(conn, reply)
+
+    xml_to_send = ~W|
+      <xml><Content>你好</Content>
+      <CreateTime>12345678</CreateTime>
+      <FromUserName>fromUser</FromUserName>
+      <MsgType>text</MsgType>
+      <ToUserName>toUser</ToUserName></xml>
+    |
+    assert body == Enum.join(xml_to_send, "\n")
+  end
+
+  test "#send_reply with encrypted data" do
+    conn =
+      conn("POST", "/")
+      |> Plug.Conn.assign(:msg_type, :encrypt)
+
+    reply = %{
+      to_user_name:    "toUser",
+      from_user_name:  "fromUser",
+      create_time:     "12345678",
+      msg_type:        "text",
+      content:         "你好",
+    }
+
+    %Plug.Conn{resp_body: body} = Responder.send_reply(conn, reply)
+    required_attrs = ~w(xml Encrypt MsgSignature Nonce TimeStamp)
+    for attr <- required_attrs do
+      assert body =~ "<#{attr}>"
+      assert body =~ "</#{attr}>"
+    end
+  end
+
   defmodule UB do
     use Wechat.Message.Responder
 
@@ -32,7 +87,7 @@ defmodule Wechat.Message.ResponderTest do
         text(msg, "hello not matched")
       end
 
-      def handle_message(:image, %{image: %{pic_url: "www.qq.com/lorem"}} = msg) do
+      def handle_message(:image, %{pic_url: "www.qq.com/lorem"} = msg) do
         text(msg, "www.qq.com/lorem matched")
       end
       def handle_message(:image, msg) do
@@ -53,7 +108,7 @@ defmodule Wechat.Message.ResponderTest do
     end
 
     test "#handle_message image pattern match" do
-      txt = :image |> message |> Map.put(:image, %{pic_url: "www.qq.com/lorem"})
+      txt = :image |> message |> Map.put(:pic_url, "www.qq.com/lorem")
       result = RB.handle_message(:image, txt)
       assert result[:content] == "www.qq.com/lorem matched"
     end

@@ -29,12 +29,12 @@ defmodule Wechat.Utils.MsgParser do
   restore the reply message
   stringtify and camelize the key
   ## Example
-      iex> Wechat.Utils.MsgParser.restore("...")
+      iex> Wechat.Utils.MsgParser.restore_key("...")
           %{
-            ToUserName:    "...",
-            FromUserName:  "...",
-            CreateTime:     "...",
-            MsgType:        "...",
+            "ToUserName"    =>"...",
+            "FromUserName"  =>"...",
+            "CreateTime"    =>"...",
+            "MsgType"       =>"...",
           }
   """
   def restore(reply) when is_map(reply) do
@@ -94,5 +94,22 @@ defmodule Wechat.Utils.MsgParser do
     defp parse_key(unquote(floki_key)), do: unquote(atom_key)
 
     defp restore_key(unquote(atom_key)), do: unquote(origin_key)
+  end
+
+  def build_xml(reply) when is_map(reply) do
+    content =
+      reply
+      |> do_build_xml
+      |> XmlBuilder.generate
+    "<xml>#{content}</xml>"
+  end
+
+  defp do_build_xml(result) do
+    Enum.map(result, fn {k, v} ->
+      case v do
+        v when is_list(v) or is_map(v) -> XmlBuilder.element(k, do_build_xml(v))
+        _                              -> XmlBuilder.element(k, v)
+      end
+    end)
   end
 end
