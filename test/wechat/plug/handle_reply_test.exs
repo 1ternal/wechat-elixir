@@ -1,17 +1,18 @@
 defmodule Wechat.Plugs.HandleReplyTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   use Plug.Test
 
   defmodule SimpleHandler do
     use Wechat.Message.Responder
   end
 
-  test "#init" do
-    result = Wechat.Plugs.HandleReply.init([])
-    assert result[:handler] == Wechat.Message.Responder
+  defmodule DSLHandler do
+    use Wechat.Message.DSL
+  end
 
-    result = Wechat.Plugs.HandleReply.init(handler: SimpleHandler)
-    assert result[:handler] == SimpleHandler
+  test "#init" do
+    result = Wechat.Plugs.HandleReply.init([handler: MHandler])
+    assert result[:handler] == MHandler
   end
 
   test "#call without parsed message" do

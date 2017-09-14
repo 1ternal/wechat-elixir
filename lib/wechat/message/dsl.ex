@@ -11,14 +11,19 @@ defmodule Wechat.Message.DSL do
   defmacro __using__(_opt) do
     quote do
       import Wechat.Message.ReplyBuilder
+
       import unquote(__MODULE__), only: [message: 2, message: 3, event: 2, event: 3]
       @before_compile(unquote(__MODULE__))
+
+      def send_reply(conn), do: Wechat.Message.Responder.send_reply(conn)
+      def send_reply(conn, msg), do: Wechat.Message.Responder.send_reply(conn, msg)
     end
   end
 
   defmacro __before_compile__(_env) do
     quote do
       def reply(msg) do
+        IO.inspect(msg)
         msg
         |> ReplyBuilder.type(:text)
         |> ReplyBuilder.content("fallback")

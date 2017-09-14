@@ -6,9 +6,11 @@ defmodule Wechat.Plugs.HandleReply do
   @replied_key :wechat_msg_replied
 
   def init(opt) do
-    Keyword.merge([
-      handler: Wechat.Message.Responder
-    ], opt)
+    handler =
+      Keyword.get(opt, :handler) ||
+      Application.get_env(:wechat, Wechat)[:message_handler] ||
+      Wechat.Message.Responder
+    [handler: handler]
   end
 
   def call(conn, opts) do
@@ -18,16 +20,21 @@ defmodule Wechat.Plugs.HandleReply do
       nil ->
         put_private(conn, @replied_key, false)
       %{} ->
+        reply = handle_reply(handler, msg)
         conn
-        |> assign(:reply, handle_reply(handler, msg))
+        |> assign(:reply, reply)
         |> put_private(@replied_key, true)
     end
   end
 
   defp handle_reply(handler, msg) do
-    case msg do
-      %{msg_type: "event"} -> handle_event(handler, msg)
-      _                    -> handle_message(handler, msg)
+    if function_exported?(handler, :reply, 1) do
+      apply(handler, :reply, [msg])
+    else
+      case msg do
+        %{msg_type: "event"} -> handle_event(handler, msg)
+        _                    -> handle_message(handler, msg)
+      end
     end
   end
 

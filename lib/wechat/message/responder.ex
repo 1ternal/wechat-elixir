@@ -37,6 +37,9 @@ defmodule Wechat.Message.Responder do
     end
   end
 
+  def send_reply(conn) do
+    send_reply(conn, conn.assigns[:reply])
+  end
   def send_reply(conn, message) do
     xml_msg =
       message

@@ -34,6 +34,7 @@ Wechat API wrapper in Elixir.
       secret: "wechat app secret",
       token: "wechat token",
       encoding_aes_key: "32bits key" # 只有"兼容模式"和"安全模式"才需要配置这个值
+      message_handler:  YourHandler, # 可选。 可通过 `HandleReply` option 设置，且覆盖此处设置
     ```
 
 ## Usage
@@ -113,31 +114,134 @@ Wechat API wrapper in Elixir.
 
       plug Wechat.Plugs.CheckUrlSignature
       plug Wechat.Plugs.CheckMsgSignature when action in [:create]
+      plug Wechat.Plugs.HandleReply, [handler: YourHanlder] when action in [:create]
 
       def index(conn, %{"echostr" => echostr}) do
         text conn, echostr
       end
 
       def create(conn, _params) do
-        msg = conn.assigns[:msg]
-        reply = build_text_reply(msg, msg.content)
-        render conn, "text.xml", reply: reply
-      end
-
-      defp build_text_reply(%{tousername: to, fromusername: from}, content) do
-        %{from: to, to: from, content: content}
+        YourHanlder.send_reply(conn)
       end
     end
     ```
 
-* text.xml.eex
+* your_handler.ex
 
-    ```xml
-    <xml>
-      <MsgType><![CDATA[text]]></MsgType>
-      <Content><![CDATA[<%= @reply.content %>]]></Content>
-      <ToUserName><![CDATA[<%= @reply.to %>]]></ToUserName>
-      <FromUserName><![CDATA[<%= @reply.from %>]]></FromUserName>
-      <CreateTime><%= DateTime.to_unix(DateTime.utc_now) %></CreateTime>
-    </xml>
+    ```elixir
+    defmodule YourHandler do
+      use Wechat.Message.DSL
+
+      # send back what you received
+      # `to_user_name` and `from_user_name` was switched, you don't have to manual do this switch operation.
+      message :text, fn received, reply ->
+        recv_content = received[:content]
+        reply
+        |> type(:text)
+        |> content(recv_content)
+      end
+
+      # using `with` option to pattern match the message `content` and reply with `text/2`
+      message :text, [with: "help"], & text(&1, "what can I do for you?")
+
+      # using `to` option will setup reply type to text, also support other reply format
+      message :voice, [to: :text], & content(&1, "fallback voice")
+
+      # most reply message attributes like `content`, `media_id`, `title` are all supported.
+      # be sure the reply type was set when using those functions.
+      message :video, [to: :image], & media_id(&1, "awesome media_id")
+
+      # the option is optional
+      message :location, & text(&1, "greate!")
+
+      # you can use single call to reply
+      message :image, fn reply ->
+        video(reply, media_id: "hello world", title: "hello title", description: "hello description")
+      end
+      # or pipelien oprator
+      message :link, [to: :music] fn reply ->
+        reply
+        |> title("awesome title")
+        |> description("awesome description")
+        |> music_url("awesome musicurl")
+        |> hq_music_url("awesome hqmusicurl")
+        |> thumb_media_id("awesome thumbmediaid")
+      end
+
+      # define the event responder :D
+      event :subscribe, fn reply ->
+        text(reply, "thx :D")
+      end
+
+      # new user scan with qrcode
+      event :scan, [with: "qr_scene_xxx"], fn received, reply ->
+        text(reply, "we just receive your ticket #{received[:ticket]}")
+      end
+
+      # subscriber scan with qrcode
+      event :scan, [with: "scene_id"], fn received, reply ->
+        text(reply, "we just receive your ticket #{received[:ticket]}")
+      end
+
+      # deal with location event
+      event :location, fn received, reply ->
+        text(reply, received[:latitude])
+      end
+
+      # click with match
+      event :click, [with: "BOOK_LUNCH"], fn reply ->
+        text(reply, "book lunch clicked")
+      end
+
+      # deal with view event
+      event :view, [with: "http://wechat.somewhere.com/view_url"], fn reply ->
+        text(reply, "menu viewed")
+      end
+    end
+    ```
+
+* your_handler.ex(the function way)
+
+    ```elixir
+    defmodule YourHandler do
+      use Wechat.Message.Responder
+
+      # handle message like `text`, `image` and others
+      def handle_message(:text, %{content: "help"} = msg) do
+        text(msg, "what can I do for you?")
+      end
+      def handle_message(:text, msg) do
+        msg
+        |> type(:music)
+        |> title("awesome title")
+        |> description("awesome description")
+        |> music_url("awesome musicurl")
+        |> hq_music_url("awesome hqmusicurl")
+        |> thumb_media_id("awesome thumbmediaid")
+      end
+
+      # handle event
+      def handle_message(:image, %{pic_url: "www.qq.com/lorem"} = msg) do
+        first_article = [
+          title:       "hello title 1",
+          description: "hello description 1",
+          pic_url:     "hello pic_url 1",
+          url:         "hello url 1",
+        ]
+        second_article = %{
+          title:       "hello title 2",
+          description: "hello description 2",
+          pic_url:     "hello pic_url 2",
+          url:         "hello url 2",
+        }
+        reply
+        |> type(:news)
+        |> article(first_article)
+        |> article(second_article)
+      end
+
+      def handle_message(:image, msg) do
+        text(msg, "www.qq.com/lorem not matched")
+      end
+    end
     ```
